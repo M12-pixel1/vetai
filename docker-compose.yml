@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: vetai_postgres
+    environment:
+      POSTGRES_USER: vetai
+      POSTGRES_PASSWORD: vetai
+      POSTGRES_DB: vetai_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vetai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vetai_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: vetai_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - vetai_network
+
+  # VetAI Backend API (optional - uncomment when implementing FastAPI)
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: vetai_backend
+  #   environment:
+  #     DATABASE_URL: postgresql://vetai:vetai@postgres:5432/vetai_db
+  #     REDIS_URL: redis://redis:6379/0
+  #     ENVIRONMENT: production
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./uploads:/app/uploads
+  #   networks:
+  #     - vetai_network
+
+  # Streamlit Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vetai_frontend
+    environment:
+      DATABASE_URL: postgresql://vetai:vetai@postgres:5432/vetai_db
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: production
+    ports:
+      - "8501:8501"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    command: streamlit run frontend/dashboard.py --server.address=0.0.0.0
+    networks:
+      - vetai_network
+
+  # PgAdmin (optional - for database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vetai_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vetai.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - vetai_network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  vetai_network:
+    driver: bridge

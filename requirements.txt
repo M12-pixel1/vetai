@@ -1,0 +1,52 @@
+# Core dependencies
+python>=3.9,<3.13
+
+# Web Framework & API
+streamlit>=1.28.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.4.0
+python-multipart>=0.0.6
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+alembic>=1.12.0
+
+# Cache
+redis>=5.0.0
+
+# AI/ML Libraries
+openai>=1.3.0
+anthropic>=0.7.0
+pillow>=10.1.0
+numpy>=1.24.0
+
+# Audio/Video Processing (optional - install if needed)
+# opencv-python>=4.8.0
+# librosa>=0.10.0
+# ffmpeg-python>=0.2.0
+
+# Authentication & Security
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+python-dotenv>=1.0.0
+
+# Utilities
+requests>=2.31.0
+aiohttp>=3.9.0
+python-dateutil>=2.8.2
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+httpx>=0.25.0
+
+# Logging & Monitoring (optional)
+# sentry-sdk>=1.38.0
+
+# Development tools (optional)
+black>=23.11.0
+flake8>=6.1.0
+mypy>=1.7.0
