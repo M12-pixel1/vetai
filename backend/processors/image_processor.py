@@ -3,7 +3,7 @@ Image processor for veterinary medical image analysis.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import asyncio
 

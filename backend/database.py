@@ -115,8 +115,16 @@ class DatabaseManager:
             return False
 
 
-# Global database manager instance
-db_manager = DatabaseManager()
+# Global database manager instance (initialized lazily to avoid requiring DB at import time)
+db_manager = None
+
+
+def get_db_manager() -> DatabaseManager:
+    """Get or create the global database manager."""
+    global db_manager
+    if db_manager is None:
+        db_manager = DatabaseManager()
+    return db_manager
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -126,5 +134,6 @@ def get_db() -> Generator[Session, None, None]:
     Yields:
         Session: SQLAlchemy database session
     """
-    with db_manager.get_session() as session:
+    manager = get_db_manager()
+    with manager.get_session() as session:
         yield session

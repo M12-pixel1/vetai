@@ -12,22 +12,57 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from backend.ai_engine import AIEngine
-from backend.database import DatabaseManager
-from backend.cache import CacheManager
-from config.settings import settings
+
+def init_backend_components():
+    """Lazy initialization of backend components."""
+    try:
+        from backend.ai_engine import AIEngine
+        from backend.database import DatabaseManager
+        from backend.cache import CacheManager
+        from config.settings import settings
+        
+        return {
+            'AIEngine': AIEngine,
+            'DatabaseManager': DatabaseManager,
+            'CacheManager': CacheManager,
+            'settings': settings
+        }
+    except Exception as e:
+        st.error(f"Failed to initialize backend components: {e}")
+        return None
 
 
 def init_session_state():
     """Initialize Streamlit session state variables."""
     if 'user' not in st.session_state:
         st.session_state.user = None
-    if 'ai_engine' not in st.session_state:
-        st.session_state.ai_engine = AIEngine()
-    if 'db_manager' not in st.session_state:
-        st.session_state.db_manager = DatabaseManager()
-    if 'cache_manager' not in st.session_state:
-        st.session_state.cache_manager = CacheManager()
+    if 'backend_components' not in st.session_state:
+        st.session_state.backend_components = init_backend_components()
+    
+    # Initialize components lazily
+    if st.session_state.backend_components:
+        components = st.session_state.backend_components
+        
+        if 'ai_engine' not in st.session_state:
+            try:
+                st.session_state.ai_engine = components['AIEngine']()
+            except Exception as e:
+                st.session_state.ai_engine = None
+        
+        if 'db_manager' not in st.session_state:
+            try:
+                st.session_state.db_manager = components['DatabaseManager']()
+            except Exception as e:
+                st.session_state.db_manager = None
+        
+        if 'cache_manager' not in st.session_state:
+            try:
+                st.session_state.cache_manager = components['CacheManager']()
+            except Exception as e:
+                st.session_state.cache_manager = None
+        
+        if 'settings' not in st.session_state:
+            st.session_state.settings = components['settings']
 
 
 def render_header():
@@ -38,7 +73,10 @@ def render_header():
         st.title("🏥 VetAI Dashboard")
     
     with col2:
-        st.markdown(f"**Version:** {settings.APP_VERSION}")
+        if hasattr(st.session_state, 'settings'):
+            st.markdown(f"**Version:** {st.session_state.settings.APP_VERSION}")
+        else:
+            st.markdown("**Version:** 2.0.0")
     
     with col3:
         if st.session_state.user:
@@ -65,8 +103,20 @@ def render_sidebar():
     st.sidebar.subheader("System Status")
     
     # Check system health
-    db_healthy = st.session_state.db_manager.health_check()
-    cache_healthy = st.session_state.cache_manager.health_check()
+    db_healthy = False
+    cache_healthy = False
+    
+    if hasattr(st.session_state, 'db_manager') and st.session_state.db_manager:
+        try:
+            db_healthy = st.session_state.db_manager.health_check()
+        except:
+            pass
+    
+    if hasattr(st.session_state, 'cache_manager') and st.session_state.cache_manager:
+        try:
+            cache_healthy = st.session_state.cache_manager.health_check()
+        except:
+            pass
     
     st.sidebar.write(f"🗄️ Database: {'✅' if db_healthy else '❌'}")
     st.sidebar.write(f"💾 Cache: {'✅' if cache_healthy else '❌'}")
@@ -212,21 +262,36 @@ def render_settings_page():
         st.subheader("AI Model Configuration")
         
         # Get current model status
-        model_status = st.session_state.ai_engine.get_model_status()
-        
-        st.json(model_status)
+        if hasattr(st.session_state, 'ai_engine') and st.session_state.ai_engine:
+            try:
+                model_status = st.session_state.ai_engine.get_model_status()
+                st.json(model_status)
+            except Exception as e:
+                st.error(f"Failed to get model status: {e}")
+        else:
+            st.info("AI Engine not initialized")
     
     with tab3:
         st.subheader("System Information")
         
         col1, col2 = st.columns(2)
         with col1:
-            st.write("**Application Version:**", settings.APP_VERSION)
-            st.write("**Environment:**", settings.ENVIRONMENT)
+            if hasattr(st.session_state, 'settings'):
+                st.write("**Application Version:**", st.session_state.settings.APP_VERSION)
+                st.write("**Environment:**", st.session_state.settings.ENVIRONMENT)
+            else:
+                st.write("**Application Version:**", "2.0.0")
+                st.write("**Environment:**", "Unknown")
         
         with col2:
-            cache_stats = st.session_state.cache_manager.get_stats()
-            st.write("**Cache Status:**", "✅ Enabled" if cache_stats.get("enabled") else "❌ Disabled")
+            if hasattr(st.session_state, 'cache_manager') and st.session_state.cache_manager:
+                try:
+                    cache_stats = st.session_state.cache_manager.get_stats()
+                    st.write("**Cache Status:**", "✅ Enabled" if cache_stats.get("enabled") else "❌ Disabled")
+                except:
+                    st.write("**Cache Status:**", "❌ Error")
+            else:
+                st.write("**Cache Status:**", "❌ Not initialized")
 
 
 def render_help_page():
